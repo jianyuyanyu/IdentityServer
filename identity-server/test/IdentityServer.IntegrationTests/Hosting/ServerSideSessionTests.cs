@@ -564,6 +564,7 @@ public class ServerSideSessionTests
     }
 
     [Fact]
+    [Trait("Category", Category)]
     public async Task using_refresh_token_without_sliding_cookie_expiration_should_not_flag_for_cookie_renewal()
     {
         _pipeline.Options.Authentication.CookieSlidingExpiration = false;
@@ -591,6 +592,7 @@ public class ServerSideSessionTests
     }
 
     [Fact]
+    [Trait("Category", Category)]
     public async Task
         using_refresh_token_with_persistent_cookie_which_does_not_allow_renewal_should_not_flag_for_cookie_renewal()
     {
@@ -619,6 +621,7 @@ public class ServerSideSessionTests
     }
 
     [Fact]
+    [Trait("Category", Category)]
     public async Task using_refresh_token_with_non_persistent_cookie_should_not_flag_for_cookie_renewal()
     {
         _pipeline.Options.Authentication.CookieSlidingExpiration = true;
@@ -646,6 +649,7 @@ public class ServerSideSessionTests
     }
 
     [Fact]
+    [Trait("Category", Category)]
     public async Task using_refresh_token_with_persistent_cookie_should_flag_cookie_for_renewal()
     {
         _pipeline.Options.Authentication.CookieSlidingExpiration = true;
@@ -703,6 +707,7 @@ public class ServerSideSessionTests
     }
     
     [Fact]
+    [Trait("Category", Category)]
     public async Task using_access_token_without_sliding_cookie_expiration_should_not_flag_for_cookie_renewal()
     {
         _pipeline.Options.Authentication.CookieSlidingExpiration = false;
@@ -732,6 +737,7 @@ public class ServerSideSessionTests
     }
 
     [Fact]
+    [Trait("Category", Category)]
     public async Task
         using_access_token_with_persistent_cookie_which_does_not_allow_renewal_should_not_flag_for_cookie_renewal()
     {
@@ -762,6 +768,7 @@ public class ServerSideSessionTests
     }
 
     [Fact]
+    [Trait("Category", Category)]
     public async Task using_access_token_with_non_persistent_cookie_should_not_flag_for_cookie_renewal()
     {
         _pipeline.Options.Authentication.CookieSlidingExpiration = true;
@@ -791,6 +798,7 @@ public class ServerSideSessionTests
     }
 
     [Fact]
+    [Trait("Category", Category)]
     public async Task using_access_token_with_persistent_cookie_should_flag_cookie_for_renewal()
     {
         _pipeline.Options.Authentication.CookieSlidingExpiration = true;
