@@ -4,6 +4,9 @@
 using System.Security.Claims;
 using Duende.Bff.Configuration;
 using Duende.Bff.DynamicFrontends;
+using Duende.Bff.SessionManagement.SessionStore;
+using Duende.Bff.Yarp;
+using Duende.Bff.Yarp.Internal;
 using Duende.IdentityModel;
 using Microsoft.AspNetCore.Authentication.Cookies;
 using Yarp.ReverseProxy.Configuration;
@@ -27,14 +30,15 @@ public class TestDataBuilder(TestData the)
             Name = The.FrontendName,
             ConfigureOpenIdConnectOptions = The.DefaultOpenIdConnectConfiguration,
             IndexHtmlUrl = The.Url,
-            SelectionCriteria = FrontendSelectionCriteria(),
-            Proxy = BffProxy()
+            SelectionCriteria = FrontendSelectionCriteria()
         };
 
-    public BffProxy BffProxy() => new()
-    {
-        RemoteApis = [RemoteApi()]
-    };
+    internal ProxyBffPlugin ProxyDataExtension() =>
+
+        new ProxyBffPlugin()
+        {
+            RemoteApis = [RemoteApi()]
+        };
 
     public RemoteApi RemoteApi() => new()
     {
@@ -78,7 +82,7 @@ public class TestDataBuilder(TestData the)
     };
 
 
-    public OidcConfiguration OidcConfiguration() =>
+    internal OidcConfiguration OidcConfiguration() =>
         new()
         {
             ClientId = The.ClientId,
@@ -93,18 +97,17 @@ public class TestDataBuilder(TestData the)
             CallbackPath = The.CallbackPath,
         };
 
-    public BffFrontendConfiguration BffFrontendConfiguration() =>
+    internal BffFrontendConfiguration BffFrontendConfiguration() =>
         new()
         {
             IndexHtmlUrl = The.Url,
             MatchingOrigin = The.Origin.ToString(),
             MatchingPath = The.Path,
             Oidc = OidcConfiguration(),
-            RemoteApis = [RemoteApiConfig()],
             Cookies = CookieConfiguration()
         };
 
-    public RemoteApiConfig RemoteApiConfig() => new()
+    internal RemoteApiConfiguration RemoteApiConfiguration() => new()
     {
         LocalPath = The.Path,
         TargetUri = The.Url,
@@ -144,7 +147,7 @@ public class TestDataBuilder(TestData the)
         new(JwtClaimTypes.Subject, The.Sub)
     }, "test", "name", "role"));
 
-    public CookieConfiguration? CookieConfiguration() => new()
+    internal CookieConfiguration? CookieConfiguration() => new()
     {
         Name = The.CookieName,
         Path = The.Path,
@@ -167,5 +170,12 @@ public class TestDataBuilder(TestData the)
             SecurePolicy = CookieSecurePolicy.Always,
             SameSite = SameSiteMode.Strict
         },
+    };
+
+    public UserSessionsFilter UserSessionsFilter() => new() { SubjectId = The.Sub };
+
+    internal FrontendProxyConfiguration FrontendProxyConfiguration() => new()
+    {
+        RemoteApis = [RemoteApiConfiguration()],
     };
 }

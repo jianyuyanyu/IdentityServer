@@ -26,6 +26,28 @@ namespace Duende.Bff;
 /// </summary>
 public sealed class BffBuilder(IServiceCollection services)
 {
+    internal IConfiguration? Configuration { get; private set; }
+
+    private List<LoadPluginConfiguration> _pluginConfigurationLoaders { get; } = [];
+
+    /// <summary>
+    /// Hook for a plugin to register itself for configuration loading.
+    /// </summary>
+    /// <param name="loadPluginConfiguration"></param>
+    internal void RegisterConfigurationLoader(LoadPluginConfiguration loadPluginConfiguration)
+    {
+        if (Configuration == null)
+        {
+            // If the configuration is not yet loaded, we store the loader for later execution
+            _pluginConfigurationLoaders.Add(loadPluginConfiguration);
+        }
+        else
+        {
+            // Configuration is already loaded, so we execute the loader immediately
+            loadPluginConfiguration(Services, Configuration);
+        }
+    }
+
     /// <summary>
     /// The service collection
     /// </summary>
@@ -49,7 +71,11 @@ public sealed class BffBuilder(IServiceCollection services)
         Services.AddHybridCache();
 
         Services.AddTransient<IStartupFilter, ConfigureBffStartupFilter>();
-        Services.AddSingleton<LocalFrontendStore>();
+
+        // Register the frontend collection, which will be used to store and retrieve frontends
+        Services.AddSingleton<FrontendCollection>();
+        // Add a public accessible interface to the frontend collection, so our users can access it
+        Services.AddSingleton<IFrontendCollection>((sp) => sp.GetRequiredService<FrontendCollection>());
 
         Services.AddTransient<SelectedFrontend>();
         Services.AddTransient<FrontendSelector>();
@@ -89,11 +115,6 @@ public sealed class BffBuilder(IServiceCollection services)
             });
         });
 
-        // Register an 'disabled' remote route handler, that can be replaced by calling
-        // .AddRemoteApis() from BFF.Yarp
-        Services.TryAddSingleton<IRemoteRouteHandler, RemoteRouteHandlingDisabled>();
-
-
         return this;
     }
 
@@ -127,7 +148,23 @@ public sealed class BffBuilder(IServiceCollection services)
 
     public BffBuilder LoadConfiguration(IConfiguration section)
     {
+        if (Configuration != null)
+        {
+            throw new InvalidOperationException("Already loaded configuration");
+        }
+
+        Configuration = section;
+
         Services.Configure<BffConfiguration>(section);
+
+        // Trigger all configuration loaders from plugins
+        foreach (var configLoader in _pluginConfigurationLoaders)
+        {
+            configLoader(Services, section);
+        }
+        // We no longer need them. 
+        _pluginConfigurationLoaders.Clear();
+
         return this;
     }
 

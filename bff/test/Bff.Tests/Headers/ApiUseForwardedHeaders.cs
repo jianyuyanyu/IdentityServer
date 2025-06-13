@@ -27,7 +27,7 @@ public class ApiUseForwardedHeaders : BffTestBase
 
         Bff.OnConfigureEndpoints += endpoints =>
         {
-            endpoints.MapRemoteBffApiEndpoint(The.Path, Api.Url().ToString());
+            endpoints.MapRemoteBffApiEndpoint(The.Path, Api.Url());
         };
     }
 
@@ -50,6 +50,7 @@ public class ApiUseForwardedHeaders : BffTestBase
         ApiCallDetails apiResult = await Bff.BrowserClient.CallBffHostApi(The.SubPath,
             headers: new()
             {
+                ["x-csrf"] = "1",
                 ["X-Forwarded-Host"] = "external"
             });
 

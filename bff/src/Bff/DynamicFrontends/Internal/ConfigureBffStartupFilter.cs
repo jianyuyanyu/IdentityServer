@@ -22,14 +22,17 @@ internal class ConfigureBffStartupFilter : IStartupFilter
             {
                 app.UseBffFrontendSelection();
                 app.UseBffPathMapping();
-                app.UseMiddleware<OpenIdConnectCallbackMiddleware>();
+                app.UseBffOpenIdCallbacks();
             }
 
             next(app);
 
+            foreach (var loader in bffOptions.MiddlewareLoaders)
+            {
+                loader(app);
+            }
             if (bffOptions.AutomaticallyRegisterBffMiddleware)
             {
-                app.UseBffRemoteRoutes();
                 app.UseBffIndexPages();
             }
 
@@ -38,7 +41,7 @@ internal class ConfigureBffStartupFilter : IStartupFilter
 
     private static void ConfigureOpenIdConfigurationCacheExpiration(IApplicationBuilder app)
     {
-        var frontendStore = app.ApplicationServices.GetRequiredService<LocalFrontendStore>();
+        var frontendStore = app.ApplicationServices.GetRequiredService<FrontendCollection>();
         var optionsMonitor = app.ApplicationServices.GetRequiredService<IOptionsMonitorCache<OpenIdConnectOptions>>();
 
         frontendStore.OnFrontendChanged +=

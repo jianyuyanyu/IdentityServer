@@ -5,6 +5,7 @@
 using Duende.IdentityServer;
 using Duende.IdentityServer.Configuration;
 using Duende.IdentityServer.Licensing.V2;
+using Duende.IdentityServer.Licensing.V2.Diagnostics;
 using Duende.IdentityServer.Logging;
 using Duende.IdentityServer.Models;
 using Duende.IdentityServer.Services;
@@ -137,6 +138,8 @@ internal static class Factory
             new TestEventService(),
             new StubClock(),
             new LicenseUsageTracker(new LicenseAccessor(new IdentityServerOptions(), NullLogger<LicenseAccessor>.Instance), new NullLoggerFactory()),
+            new ClientLoadedTracker(),
+            new ResourceLoadedTracker(),
             TestLogger.Create<TokenRequestValidator>());
     }
 
@@ -265,6 +268,8 @@ internal static class Factory
             userSession,
             requestObjectValidator,
             new LicenseUsageTracker(new LicenseAccessor(new IdentityServerOptions(), NullLogger<LicenseAccessor>.Instance), new NullLoggerFactory()),
+            new ClientLoadedTracker(),
+            new ResourceLoadedTracker(),
             new SanitizedLogger<AuthorizeRequestValidator>(TestLogger.Create<AuthorizeRequestValidator>()));
     }
 

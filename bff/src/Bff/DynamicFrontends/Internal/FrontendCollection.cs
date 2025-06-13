@@ -1,14 +1,14 @@
 // Copyright (c) Duende Software. All rights reserved.
 // See LICENSE in the project root for license information.
 
-using Duende.Bff.AccessTokenManagement;
 using Duende.Bff.Configuration;
 using Microsoft.Extensions.Options;
 
 namespace Duende.Bff.DynamicFrontends.Internal;
 
-internal class LocalFrontendStore : IDisposable
+internal class FrontendCollection : IDisposable, IFrontendCollection
 {
+    private readonly IBffPluginLoader[] _plugins;
     private readonly object _syncRoot = new();
 
     /// <summary>
@@ -20,12 +20,15 @@ internal class LocalFrontendStore : IDisposable
 
     private readonly IDisposable? _stopSubscription;
 
-    public event Action<BffFrontend> OnFrontendChanged = (_) => { };
+    internal event Action<BffFrontend> OnFrontendChanged = (_) => { };
 
-    public LocalFrontendStore(
+    public FrontendCollection(
         IOptionsMonitor<BffConfiguration> bffConfiguration,
-        IEnumerable<BffFrontend>? frontendsConfiguredDuringStartup = null)
+        IEnumerable<IBffPluginLoader> plugins,
+        IEnumerable<BffFrontend>? frontendsConfiguredDuringStartup = null
+        )
     {
+        _plugins = plugins.ToArray();
         _frontends = ReadFrontends(bffConfiguration.CurrentValue, frontendsConfiguredDuringStartup ?? []);
 
         // Subscribe to configuration changes
@@ -63,7 +66,7 @@ internal class LocalFrontendStore : IDisposable
         });
     }
 
-    private static BffFrontend[] ReadFrontends(
+    private BffFrontend[] ReadFrontends(
         BffConfiguration bffConfiguration,
         IEnumerable<BffFrontend> inMemory)
     {
@@ -71,9 +74,12 @@ internal class LocalFrontendStore : IDisposable
         {
             var frontend = x.Value;
 
+            var frontendName = BffFrontendName.Parse(x.Key);
+            var extensions = _plugins.Select(p => p.LoadExtension(frontendName)).OfType<IBffPlugin>().ToArray();
+
             return new BffFrontend
             {
-                Name = BffFrontendName.Parse(x.Key),
+                Name = frontendName,
                 IndexHtmlUrl = frontend.IndexHtmlUrl,
                 ConfigureOpenIdConnectOptions = opt =>
                 {
@@ -90,60 +96,57 @@ internal class LocalFrontendStore : IDisposable
                     MatchingOrigin = string.IsNullOrEmpty(frontend.MatchingOrigin) ? null : Origin.Parse(frontend.MatchingOrigin),
                     MatchingPath = string.IsNullOrEmpty(frontend.MatchingPath) ? null : frontend.MatchingPath,
                 },
-                Proxy = new BffProxy()
-                {
-                    RemoteApis = frontend.RemoteApis.Select(MapFrom).ToArray()
-                }
+                DataExtensions = extensions
             };
         });
 
         return inMemory.Concat(fromOptions).ToArray();
     }
 
-    private static RemoteApi MapFrom(RemoteApiConfig config)
-    {
-        Type? type = null;
+    //private static RemoteApi MapFrom(RemoteApiConfig config)
+    //{
+    //    Type? type = null;
 
-        if (config.TokenRetrieverTypeName != null)
-        {
-            type = Type.GetType(config.TokenRetrieverTypeName);
-            if (type == null)
-            {
-                throw new InvalidOperationException($"Type {config.TokenRetrieverTypeName} not found.");
-            }
-            if (!typeof(IAccessTokenRetriever).IsAssignableFrom(type))
-            {
-                throw new InvalidOperationException($"Type {config.TokenRetrieverTypeName} must implement IAccessTokenRetriever.");
-            }
-        }
+    //    if (config.TokenRetrieverTypeName != null)
+    //    {
+    //        type = Type.GetType(config.TokenRetrieverTypeName);
+    //        if (type == null)
+    //        {
+    //            throw new InvalidOperationException($"Type {config.TokenRetrieverTypeName} not found.");
+    //        }
+    //        if (!typeof(IAccessTokenRetriever).IsAssignableFrom(type))
+    //        {
+    //            throw new InvalidOperationException($"Type {config.TokenRetrieverTypeName} must implement IAccessTokenRetriever.");
+    //        }
+    //    }
 
-        var api = new RemoteApi
-        {
-            LocalPath = config.LocalPath ?? throw new InvalidOperationException("localpath cannot be empty"),
-            TargetUri = config.TargetUri ?? throw new InvalidOperationException("targeturi cannot be empty"),
-            RequiredTokenType = config.RequiredTokenType,
-            AccessTokenRetrieverType = type,
-            Parameters = Map(config.UserAccessTokenParameters)
-        };
+    //    var api = new RemoteApi
+    //    {
+    //        LocalPath = config.LocalPath ?? throw new InvalidOperationException("localpath cannot be empty"),
+    //        TargetUri = config.TargetUri ?? throw new InvalidOperationException("targeturi cannot be empty"),
+    //        RequiredTokenType = config.RequiredTokenType,
+    //        AccessTokenRetrieverType = type,
+    //        Parameters = Map(config.UserAccessTokenParameters)
+    //    };
 
-        return api;
-    }
+    //    return api;
+    //}
 
-    private static BffUserAccessTokenParameters? Map(UserAccessTokenParameters? config)
-    {
-        if (config == null)
-        {
-            return null;
-        }
+    //private static BffUserAccessTokenParameters? Map(UserAccessTokenParameters? config)
+    //{
+    //    if (config == null)
+    //    {
+    //        return null;
+    //    }
 
-        return new BffUserAccessTokenParameters
-        {
-            SignInScheme = config.SignInScheme,
-            ChallengeScheme = config.ChallengeScheme,
-            ForceRenewal = config.ForceRenewal,
-            Resource = config.Resource
-        };
-    }
+    //    return new BffUserAccessTokenParameters
+    //    {
+    //        SignInScheme = config.SignInScheme,
+    //        ChallengeScheme = config.ChallengeScheme,
+    //        ForceRenewal = config.ForceRenewal,
+    //        Resource = config.Resource
+    //    };
+    //}
 
     public void AddOrUpdate(BffFrontend frontend)
     {
@@ -193,5 +196,5 @@ internal class LocalFrontendStore : IDisposable
     // The _frontends array is completely replaced on add/update, so we don't need to lock here.
     public IReadOnlyList<BffFrontend> GetAll() => _frontends.AsReadOnly();
 
-    public void Dispose() => _stopSubscription?.Dispose();
+    void IDisposable.Dispose() => _stopSubscription?.Dispose();
 }
