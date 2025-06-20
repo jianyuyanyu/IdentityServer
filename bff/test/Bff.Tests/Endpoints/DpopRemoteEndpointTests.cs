@@ -29,7 +29,7 @@ public class DpopRemoteEndpointTests : BffTestBase, IAsyncLifetime
         Bff.OnConfigureBff += bff => bff.AddRemoteApis();
         Bff.OnConfigureEndpoints += endpoints =>
         {
-            endpoints.MapRemoteBffApiEndpoint(The.Path, Api.Url().ToString())
+            endpoints.MapRemoteBffApiEndpoint(The.Path, Api.Url())
                 .WithAccessToken(RequiredTokenType.Client)
                 ;
         };
@@ -45,7 +45,7 @@ public class DpopRemoteEndpointTests : BffTestBase, IAsyncLifetime
     {
 
         ApiCallDetails callToApi = await Bff.BrowserClient.CallBffHostApi(
-            url: Bff.Url(The.SubPath)
+            url: Bff.Url(The.PathAndSubPath)
         );
 
         callToApi.RequestHeaders["DPoP"].First().ShouldNotBeNullOrEmpty();

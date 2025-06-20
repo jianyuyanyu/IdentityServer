@@ -8,6 +8,7 @@ using Microsoft.Extensions.Options;
 namespace Duende.Bff.DynamicFrontends;
 
 internal class BffConfigureOpenIdConnectOptions(
+    TimeProvider timeProvider,
     SelectedFrontend selectedFrontend,
     IOptions<BffConfiguration> bffConfiguration,
     IOptions<BffOptions> bffOptions
@@ -17,28 +18,28 @@ internal class BffConfigureOpenIdConnectOptions(
 
     public void Configure(string? name, OpenIdConnectOptions options)
     {
+        // Normally, this is added by AuthenticationBuilder.PostConfigureAuthenticationSchemeOptions
+        // but this is private API, so we need to do it ourselves.
+        options.TimeProvider = timeProvider;
         var defaultOptionsValue = bffOptions.Value;
         var bffConfigurationValue = bffConfiguration.Value;
 
-        var defaultCallbackPath = options.CallbackPath;
+        // Apply the programmatic defaults for OpenID Connect options
         defaultOptionsValue.ConfigureOpenIdConnectDefaults?.Invoke(options);
+
+        // Apply the defaults from the BFF configuration
         bffConfigurationValue.DefaultOidcSettings?.ApplyTo(options);
 
-
-        if (defaultOptionsValue.BackchannelMessageHandler != null)
+        if (defaultOptionsValue.BackchannelMessageHandler != null && options.BackchannelHttpHandler == null)
         {
             options.BackchannelHttpHandler = defaultOptionsValue.BackchannelMessageHandler;
         }
 
+        // See if there is a frontend selected
+        // If so, apply the frontend's OpenID Connect options
         if (!selectedFrontend.TryGet(out var frontEnd))
         {
             return;
-        }
-
-        // Make sure we have a default for the callback path. 
-        if (options.CallbackPath == defaultCallbackPath)
-        {
-            options.CallbackPath = Constants.ManagementEndpoints.SigninUrl;
         }
 
         options.SignInScheme = frontEnd.CookieSchemeName;

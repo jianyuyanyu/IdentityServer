@@ -7,14 +7,13 @@ namespace Duende.Bff.Tests.TestInfra;
 
 public class TestHost(TestHostContext context, Uri baseAddress) : IAsyncDisposable
 {
-    public TestHost(TestHostContext context) : this(context, new("https://server"))
-    {
-    }
 
-    public TestDataBuilder Some => context.Some;
+    internal TestDataBuilder Some => context.Some;
     public TestData The => context.The;
 
     protected SimulatedInternet Internet => context.Internet;
+
+    protected void WriteOutput(string output) => context.WriteOutput(output);
 
     IServiceProvider? _appServices = null!;
 
@@ -75,6 +74,8 @@ public class TestHost(TestHostContext context, Uri baseAddress) : IAsyncDisposab
 
     protected virtual void ConfigureServices(IServiceCollection services)
     {
+        services.AddSingleton<TimeProvider>(The.Clock);
+
         services.AddAuthentication();
         services.AddAuthorization();
         services.AddRouting();

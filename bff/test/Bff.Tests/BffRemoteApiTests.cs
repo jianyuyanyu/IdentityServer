@@ -3,7 +3,6 @@
 
 using System.Net;
 using Duende.Bff.AccessTokenManagement;
-using Duende.Bff.DynamicFrontends;
 using Duende.Bff.Tests.TestFramework;
 using Duende.Bff.Tests.TestInfra;
 using Duende.Bff.Yarp;
@@ -27,25 +26,19 @@ public class BffRemoteApiTests : BffTestBase
     {
         await InitializeAsync();
 
-        AddOrUpdateFrontend(Some.BffFrontend() with
-        {
-            Proxy = new BffProxy()
-            {
-                RemoteApis =
-                [
+        AddOrUpdateFrontend(Some.BffFrontend()
+            .WithRemoteApis(
                     new RemoteApi()
                     {
                         LocalPath = The.Path,
                         TargetUri = Api.Url(),
                         RequiredTokenType = requiredTokenType
-                    }
-                ]
-            }
-        });
+                    })
+        );
 
         await Bff.BrowserClient.Login();
 
-        ApiCallDetails result = await Bff.BrowserClient.CallBffHostApi(The.SubPath);
+        ApiCallDetails result = await Bff.BrowserClient.CallBffHostApi(The.PathAndSubPath);
         result.Sub.ShouldBe(The.Sub);
     }
 
@@ -57,23 +50,17 @@ public class BffRemoteApiTests : BffTestBase
     {
         await InitializeAsync();
 
-        AddOrUpdateFrontend(Some.BffFrontend() with
-        {
-            Proxy = new BffProxy()
-            {
-                RemoteApis =
-                [
-                    new RemoteApi()
-                    {
-                        LocalPath = The.Path,
-                        TargetUri = Api.Url(),
-                        RequiredTokenType = requiredTokenType
-                    }
-                ]
-            }
-        });
+        AddOrUpdateFrontend(Some.BffFrontend()
+            .WithRemoteApis(
+                new RemoteApi()
+                {
+                    LocalPath = The.Path,
+                    TargetUri = Api.Url(),
+                    RequiredTokenType = requiredTokenType
+                })
+        );
 
-        ApiCallDetails result = await Bff.BrowserClient.CallBffHostApi(The.SubPath);
+        ApiCallDetails result = await Bff.BrowserClient.CallBffHostApi(The.PathAndSubPath);
         result.Sub.ShouldBeNull();
 
         if (requiredTokenType == RequiredTokenType.UserOrClient || requiredTokenType == RequiredTokenType.Client)
@@ -93,23 +80,17 @@ public class BffRemoteApiTests : BffTestBase
     {
         await InitializeAsync();
 
-        AddOrUpdateFrontend(Some.BffFrontend() with
-        {
-            Proxy = new BffProxy()
-            {
-                RemoteApis =
-                [
-                    new RemoteApi()
-                    {
-                        LocalPath = The.Path,
-                        TargetUri = Api.Url(),
-                        RequiredTokenType = RequiredTokenType.User
-                    }
-                ]
-            }
-        });
+        AddOrUpdateFrontend(Some.BffFrontend()
+            .WithRemoteApis(
+                new RemoteApi()
+                {
+                    LocalPath = The.Path,
+                    TargetUri = Api.Url(),
+                    RequiredTokenType = RequiredTokenType.User
+                })
+        );
 
-        await Bff.BrowserClient.CallBffHostApi(The.SubPath,
+        await Bff.BrowserClient.CallBffHostApi(The.PathAndSubPath,
             expectedStatusCode: HttpStatusCode.Unauthorized);
 
 

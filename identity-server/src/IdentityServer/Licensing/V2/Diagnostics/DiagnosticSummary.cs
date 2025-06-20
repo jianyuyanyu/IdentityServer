@@ -4,12 +4,14 @@
 using System.Buffers;
 using System.Text;
 using System.Text.Json;
+using Duende.IdentityServer.Configuration;
 using Microsoft.Extensions.Logging;
 
 namespace Duende.IdentityServer.Licensing.V2.Diagnostics;
 
-internal class DiagnosticSummary(IEnumerable<IDiagnosticEntry> entries, ILogger<DiagnosticSummary> logger)
+internal class DiagnosticSummary(IEnumerable<IDiagnosticEntry> entries, IdentityServerOptions options, ILoggerFactory loggerFactory)
 {
+    private readonly ILogger _logger = loggerFactory.CreateLogger("Duende.IdentityServer.Diagnostics.Summary");
     public async Task PrintSummary()
     {
         var bufferWriter = new ArrayBufferWriter<byte>();
@@ -26,6 +28,24 @@ internal class DiagnosticSummary(IEnumerable<IDiagnosticEntry> entries, ILogger<
 
         await writer.FlushAsync();
 
-        logger.LogInformation("{Message}", Encoding.UTF8.GetString(bufferWriter.WrittenSpan));
+        var span = bufferWriter.WrittenSpan;
+
+        using var diagnosticActivity = Tracing.DiagnosticsActivitySource.StartActivity("DiagnosticSummary");
+        var chunkSize = options.Diagnostics.ChunkSize;
+        if (span.Length > chunkSize)
+        {
+            var totalChunks = (span.Length + options.Diagnostics.ChunkSize - 1) / chunkSize;
+            for (var i = 0; i < totalChunks; i++)
+            {
+                var offset = i * chunkSize;
+                var length = Math.Min(chunkSize, span.Length - offset);
+                var chunk = span.Slice(offset, length);
+                _logger.DiagnosticSummaryLogged(i + 1, totalChunks, Encoding.UTF8.GetString(chunk));
+            }
+        }
+        else
+        {
+            _logger.DiagnosticSummaryLogged(1, 1, Encoding.UTF8.GetString(bufferWriter.WrittenSpan));
+        }
     }
 }

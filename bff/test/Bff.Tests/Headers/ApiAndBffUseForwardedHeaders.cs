@@ -37,7 +37,7 @@ public class ApiAndBffUseForwardedHeaders : BffTestBase, IAsyncLifetime
 
         Bff.OnConfigureEndpoints += endpoints =>
         {
-            endpoints.MapRemoteBffApiEndpoint(The.Path, Api.Url().ToString());
+            endpoints.MapRemoteBffApiEndpoint(The.Path, Api.Url());
         };
 
     }
@@ -46,7 +46,7 @@ public class ApiAndBffUseForwardedHeaders : BffTestBase, IAsyncLifetime
     public async Task bff_host_name_should_propagate_to_api()
     {
 
-        ApiCallDetails apiResult = await Bff.BrowserClient.CallBffHostApi(The.SubPath);
+        ApiCallDetails apiResult = await Bff.BrowserClient.CallBffHostApi(The.PathAndSubPath);
 
         var host = apiResult.RequestHeaders["Host"].Single();
         host.ShouldBe(Bff.Url().Host);
@@ -55,9 +55,10 @@ public class ApiAndBffUseForwardedHeaders : BffTestBase, IAsyncLifetime
     [Fact]
     public async Task forwarded_host_name_with_header_forwarding_should_propagate_to_api()
     {
-        ApiCallDetails apiResult = await Bff.BrowserClient.CallBffHostApi(The.SubPath,
+        ApiCallDetails apiResult = await Bff.BrowserClient.CallBffHostApi(The.PathAndSubPath,
             headers: new()
             {
+                ["x-csrf"] = "1",
                 ["X-Forwarded-Host"] = "external"
             });
 

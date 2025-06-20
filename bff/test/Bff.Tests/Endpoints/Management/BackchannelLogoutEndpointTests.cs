@@ -8,36 +8,30 @@ using Xunit.Abstractions;
 
 namespace Duende.Bff.Tests.Endpoints.Management;
 
-
-// Todo: EV: these tests are suspect. I'm not 100% sure they are correct.
-
-
 public class BackchannelLogoutEndpointTests : BffTestBase
 {
-    public BackchannelLogoutEndpointTests(ITestOutputHelper output) : base(output)
+    public BackchannelLogoutEndpointTests(ITestOutputHelper output) : base(output) => Bff.OnConfigureBff += bff =>
+                                                                                           {
+                                                                                               bff.AddServerSideSessions();
+                                                                                           };
+
+    public override async Task InitializeAsync()
     {
-        var client = IdentityServer.AddClient(The.ClientId, Bff.Url());
-        client.BackChannelLogoutUri = Bff.Url("/bff/backchannel").ToString();
-        client.BackChannelLogoutSessionRequired = true;
+        await base.InitializeAsync();
 
-        Bff.SetBffOptions += options =>
+        foreach (var client in IdentityServer.Clients)
         {
-            options.ConfigureOpenIdConnectDefaults = opt =>
-            {
-                The.DefaultOpenIdConnectConfiguration(opt);
-            };
-        };
-
-        Bff.OnConfigureBff += bff =>
-        {
-            bff.AddServerSideSessions();
-        };
+            client.BackChannelLogoutUri = Bff.Url("/bff/backchannel").ToString();
+            client.BackChannelLogoutSessionRequired = true;
+        }
     }
 
-
-    [Fact]
-    public async Task backchannel_logout_should_allow_anonymous()
+    [Theory]
+    [MemberData(nameof(AllSetups))]
+    public async Task backchannel_logout_should_allow_anonymous(BffSetupType setup)
     {
+        ConfigureBff(setup);
+
         Bff.OnConfigureServices += svcs =>
         {
             svcs.AddAuthorization(opts =>
@@ -55,21 +49,25 @@ public class BackchannelLogoutEndpointTests : BffTestBase
             .CheckHttpStatusCode(HttpStatusCode.BadRequest);
     }
 
-    [Fact]
-    public async Task backchannel_logout_endpoint_should_signout()
+    [Theory]
+    [MemberData(nameof(AllSetups))]
+    public async Task backchannel_logout_endpoint_should_signout(BffSetupType setup)
     {
+        ConfigureBff(setup);
         await InitializeAsync();
 
         await Bff.BrowserClient.Login();
 
-        await Bff.BrowserClient.RevokeIdentityServerSession(IdentityServer.Url());
+        await Bff.BrowserClient.RevokeIdentityServerSession();
 
         (await Bff.BrowserClient.GetIsUserLoggedInAsync()).ShouldBeFalse();
     }
 
-    [Fact]
-    public async Task backchannel_logout_endpoint_for_incorrect_sub_should_not_logout_user()
+    [Theory]
+    [MemberData(nameof(AllSetups))]
+    public async Task backchannel_logout_endpoint_for_incorrect_sub_should_not_logout_user(BffSetupType setup)
     {
+        ConfigureBff(setup);
         await InitializeAsync();
 
         await Bff.BrowserClient.CreateIdentityServerSessionCookieAsync(IdentityServer, The.Sub, The.Sid);
@@ -78,29 +76,33 @@ public class BackchannelLogoutEndpointTests : BffTestBase
 
         await Bff.BrowserClient.CreateIdentityServerSessionCookieAsync(IdentityServer, "different_sub", The.Sid);
 
-        await Bff.BrowserClient.RevokeIdentityServerSession(IdentityServer.Url());
+        await Bff.BrowserClient.RevokeIdentityServerSession();
 
         (await Bff.BrowserClient.GetIsUserLoggedInAsync()).ShouldBeTrue();
     }
 
-    [Fact]
-    public async Task backchannel_logout_endpoint_for_incorrect_sid_should_not_logout_user()
+    [Theory]
+    [MemberData(nameof(AllSetups))]
+    public async Task backchannel_logout_endpoint_for_incorrect_sid_should_not_logout_user(BffSetupType setup)
     {
+        ConfigureBff(setup);
         await InitializeAsync();
 
         await Bff.BrowserClient.Login();
 
         await Bff.BrowserClient.CreateIdentityServerSessionCookieAsync(IdentityServer, The.Sub, "different_sid");
 
-        await Bff.BrowserClient.RevokeIdentityServerSession(IdentityServer.Url());
+        await Bff.BrowserClient.RevokeIdentityServerSession();
 
         (await Bff.BrowserClient.GetIsUserLoggedInAsync()).ShouldBeTrue();
     }
 
 
-    [Fact]
-    public async Task when_BackchannelLogoutAllUserSessions_is_false_backchannel_logout_should_only_logout_one_session()
+    [Theory]
+    [MemberData(nameof(AllSetups))]
+    public async Task when_BackchannelLogoutAllUserSessions_is_false_backchannel_logout_should_only_logout_one_session(BffSetupType setup)
     {
+        ConfigureBff(setup);
         Bff.SetBffOptions += options =>
         {
             options.BackchannelLogoutAllUserSessions = false;
@@ -125,7 +127,7 @@ public class BackchannelLogoutEndpointTests : BffTestBase
             sessions.Count().ShouldBe(2);
         }
 
-        await Bff.BrowserClient.RevokeIdentityServerSession(IdentityServer.Url());
+        await Bff.BrowserClient.RevokeIdentityServerSession();
 
         {
             var store = Bff.Resolve<IUserSessionStore>();
@@ -135,9 +137,11 @@ public class BackchannelLogoutEndpointTests : BffTestBase
         }
     }
 
-    [Fact]
-    public async Task when_BackchannelLogoutAllUserSessions_is_false_backchannel_logout_should_logout_all_sessions()
+    [Theory]
+    [MemberData(nameof(AllSetups))]
+    public async Task when_BackchannelLogoutAllUserSessions_is_false_backchannel_logout_should_logout_all_sessions(BffSetupType setup)
     {
+        ConfigureBff(setup);
         Bff.SetBffOptions += options =>
         {
             options.BackchannelLogoutAllUserSessions = true;
@@ -162,7 +166,7 @@ public class BackchannelLogoutEndpointTests : BffTestBase
             sessions.Count().ShouldBe(2);
         }
 
-        await Bff.BrowserClient.RevokeIdentityServerSession(IdentityServer.Url());
+        await Bff.BrowserClient.RevokeIdentityServerSession();
 
         {
             var store = Bff.Resolve<IUserSessionStore>();

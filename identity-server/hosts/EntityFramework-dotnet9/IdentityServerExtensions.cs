@@ -26,7 +26,6 @@ internal static class IdentityServerExtensions
             options.Authentication.CoordinateClientLifetimesWithUserSession = true;
             options.ServerSideSessions.UserDisplayNameClaimType = JwtClaimTypes.Name;
             options.ServerSideSessions.RemoveExpiredSessions = true;
-            options.ServerSideSessions.RemoveExpiredSessionsFrequency = TimeSpan.FromSeconds(10);
             options.ServerSideSessions.ExpiredSessionsTriggerBackchannelLogout = true;
             options.Endpoints.EnablePushedAuthorizationEndpoint = true;
 
@@ -50,6 +49,8 @@ internal static class IdentityServerExtensions
             });
 
             options.MutualTls.Enabled = true;
+
+            options.Diagnostics.ChunkSize = 1024 * 1000 - 32; // 1 MB minus some formatting space;
         })
             .AddTestUsers(TestUsers.Users)
             // this adds the config data from DB (clients, resources, CORS)
@@ -65,11 +66,10 @@ internal static class IdentityServerExtensions
                 // this enables automatic token cleanup. this is optional.
                 options.EnableTokenCleanup = true;
                 options.RemoveConsumedTokens = true;
-                options.TokenCleanupInterval = 10; // interval in seconds
+                options.TokenCleanupInterval = 180; // interval in seconds
             })
             .AddAppAuthRedirectUriValidator()
             .AddServerSideSessions()
-            .AddScopeParser<ParameterizedScopeParser>()
 
             // this is something you will want in production to reduce load on and requests to the DB
             //.AddConfigurationStoreCache()
@@ -83,21 +83,6 @@ internal static class IdentityServerExtensions
             .AddCustomTokenRequestValidator<ParameterizedScopeTokenRequestValidator>()
             .AddScopeParser<ParameterizedScopeParser>()
             .AddMutualTlsSecretValidators()
-
-            // Comment out `AddInMemoryOidcProviders` if you want to use the seeded identity providers
-            .AddInMemoryOidcProviders(
-            [
-                new Duende.IdentityServer.Models.OidcProvider
-                {
-                    Scheme = "dynamicprovider-idsvr",
-                    DisplayName = "IdentityServer (via Dynamic Providers)",
-                    Authority = "https://demo.duendesoftware.com",
-                    ClientId = "login",
-                    ResponseType = "id_token",
-                    Scope = "openid profile"
-                }
-            ])
-
             .AddLicenseSummary();
 
         builder.Services.AddDistributedMemoryCache();

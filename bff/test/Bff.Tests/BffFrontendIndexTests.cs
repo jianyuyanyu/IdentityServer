@@ -39,26 +39,20 @@ public class BffFrontendIndexTests : BffTestBase
 
         await InitializeAsync();
 
-        AddOrUpdateFrontend(Some.BffFrontend() with
-        {
-            IndexHtmlUrl = Cdn.Url("index.html"),
-            Proxy = new BffProxy()
+        AddOrUpdateFrontend(Some.BffFrontend()
+            .WithIndexHtmlUrl(Cdn.Url("index.html"))
+            .WithRemoteApis(new RemoteApi()
             {
-                RemoteApis = [
-                    new RemoteApi()
-                    {
-                        TargetUri = Api.Url(),
-                        LocalPath = The.Path,
-                        RequiredTokenType = RequiredTokenType.Client,
-                    }
-                ]
-            }
-        });
+                TargetUri = Api.Url(),
+                LocalPath = The.Path,
+                RequiredTokenType = RequiredTokenType.Client,
+            })
+        );
 
         await Bff.BrowserClient.Login()
             .CheckResponseContent(Cdn.IndexHtml);
 
-        var result = await Bff.BrowserClient.CallBffHostApi(The.SubPath);
+        var result = await Bff.BrowserClient.CallBffHostApi(The.PathAndSubPath);
     }
     [Fact]
     public async Task Given_index_can_call_local_api()
